@@ -86,6 +86,16 @@
   }
   .max:fullscreen .stage {
     max-height: initial;
+    /* 전체화면에서 비디오가 찌그러지지 않도록 flex 설정을 유지 */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .max:fullscreen .stage video {
+    width: auto; /* 너비를 자동으로 조절 */
+    height: 100%; /* 높이를 꽉 채우고 */
+    max-width: 100%; /* 최대 너비는 화면을 넘지 않도록 */
+    object-fit: contain; /* 비율 유지 */
   }
 </style>
 </head>
@@ -131,6 +141,7 @@
       
       <div class="row" style="margin-top:12px">
         <span class="pill">찾은 단서: <b class="found-count">0</b>/<b class="need-count">1</b></span>
+        <span class="pill">소요 시간: <b id="clock">00:00</b></span>
         <span class="grow"></span>
         <button id="btn-hint" class="ghost">💡 힌트 보기</button>
       </div>
@@ -218,9 +229,13 @@ const $btnAudio = qs('#btn-audio');
 const $statFound = qs('#stat-found');
 const $statTime  = qs('#stat-time');
 const $playTitle = qs('#play-title');
+const $clock = qs('#clock'); // 타이머 요소를 가져옵니다.
 
 let GLOBAL = { startedAt:0, timerId:null, sessionFound:0, audio:false, dev:false, cleared:{} };
 let ROUND  = { item: null, lock: false, currentItemIndex: 0, found: false };
+
+let playTimerId = null; // 개별 영상 플레이 타이머 ID
+let playStartTime = 0;  // 개별 영상 플레이 시작 시간
 
 const STORAGE_KEY = 'video_cleared_items_v1';
 function loadClears(){ try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}'); }catch(e){ return {}; } }
@@ -230,7 +245,8 @@ function speakToast(msg){ speak(msg); toast(msg); }
 function toast(msg){ $toast.textContent=msg; $toast.hidden=false; clearTimeout(toast._t);
   toast._t=setTimeout(()=> $toast.hidden=true, 1400); }
 
-function startTimer(){
+// 전체 세션 타이머 (맨 위 '전체 사용 시간')
+function startOverallTimer(){
   let t0 = sessionStorage.getItem('sessionStartTime');
   if(!t0){ t0=Date.now(); sessionStorage.setItem('sessionStartTime', t0); }
   
@@ -242,10 +258,33 @@ function startTimer(){
     if($statTime) $statTime.textContent=`${mm}:${ss}`;
   },1000);
 }
+
+// 개별 영상 플레이 타이머 (플레이 화면 '소요 시간')
+function startPlayTimer(){
+  playStartTime = Date.now();
+  clearInterval(playTimerId);
+  playTimerId = setInterval(()=>{
+    const s = Math.floor((Date.now()-playStartTime)/1000);
+    const mm=String(Math.floor(s/60)).padStart(2,'0');
+    const ss=String(s%60).padStart(2,'0');
+    if($clock) $clock.textContent=`${mm}:${ss}`;
+  }, 250);
+}
+
+function stopPlayTimer(){
+  clearInterval(playTimerId);
+  playTimerId = null;
+  if($clock) $clock.textContent = '00:00'; // 타이머 중지 시 00:00으로 리셋
+}
+
+
 function navPlay(on){ 
   $start.hidden = on; 
   $play.hidden = !on;
   document.querySelectorAll('video').forEach(v => v.pause());
+  if (!on) { // 플레이 화면을 나갈 때
+    stopPlayTimer();
+  }
 }
 
 /* ---------- UI 빌드 & 진행 ---------- */
@@ -284,14 +323,22 @@ function playVideo(index) {
   video.src = item.fake;
   video.autoplay = true;
   video.loop = true;
-  video.muted = true;
+  video.muted = true; // 자동 재생을 위해 muted는 필수
   video.playsinline = true;
   $stage.appendChild(video);
+  
+  // 비디오가 DOM에 추가된 후 명시적으로 재생 시도
+  video.load(); 
+  video.play().catch(error => {
+    console.warn("Video autoplay blocked:", error);
+    speakToast('영상이 자동으로 재생되지 않으면 화면을 한 번 눌러주세요.');
+  });
   
   $stage.onclick = onStageClick;
   qs('#btn-exit').onclick = () => navPlay(false);
   qs('#btn-hint').onclick = () => showHint(item);
 
+  startPlayTimer(); // 개별 영상 타이머 시작
   navPlay(true);
   speakToast('틀린 부분을 찾아 클릭해보세요!');
 }
@@ -344,6 +391,7 @@ function showHint(item){
 
 function onWin() {
   ROUND.lock = true;
+  stopPlayTimer(); // 개별 영상 타이머 중지
   if (!GLOBAL.cleared[ROUND.item.id]) {
     GLOBAL.sessionFound++; 
     $statFound.textContent = GLOBAL.sessionFound;
@@ -360,7 +408,7 @@ function onWin() {
   origVideo.controls = true;
   origVideo.autoplay = true;
   origVideo.loop = true;
-  origVideo.muted = false; // 원본은 소리 켜기
+  origVideo.muted = false; // 원본 영상은 소리 켜짐
   origVideo.playsinline = true;
   $original.appendChild(origVideo);
 
@@ -368,13 +416,16 @@ function onWin() {
   saveClears();
 
   const allCleared = CONTENT.every(item => GLOBAL.cleared[item.id]);
-  const nextItemIndex = (ROUND.currentItemIndex + 1) % CONTENT.length;
+  let nextItemIndex = (ROUND.currentItemIndex + 1);
+  if (nextItemIndex >= CONTENT.length) { // 다음 영상이 없으면 처음으로
+      nextItemIndex = 0; 
+  }
 
   const $nextButton = qs('#btn-other');
   if (allCleared) {
     $nextButton.textContent = '모든 영상 완료! 홈으로';
   } else {
-    $nextButton.textContent = '다음 영상 보기 →';
+    $nextButton.textContent = '다른 영상 보기 →';
   }
 
   $nextButton.onclick = () => {
@@ -395,7 +446,7 @@ function onWin() {
 (function init() {
   GLOBAL.cleared = loadClears();
   buildGrid();
-  startTimer();
+  startOverallTimer(); // 전체 세션 타이머 시작
 
   let clickCount=0, clickTimer=null;
   qs('.headline').onclick = ()=>{
