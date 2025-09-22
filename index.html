@@ -373,17 +373,15 @@ function ringAt(px,py,good){
 }
 
 function showHint(item){
-  const msg='여기를 조금 더 살펴볼까요?';
-  speakToast(msg);
-  const i = (item.spots||[]).findIndex((_,idx)=> !ROUND.found.has(idx));
-  if(i >= 0){
-    const h = item.spots[i];
+  const msg='여기를 조금 더 살펴볼까요?'; speakToast(msg);
+  const i=(item.spots||[]).findIndex((_,i)=> !ROUND.found.has(i));
+  if(i>=0){
+    const h=item.spots[i];
     const g=document.createElement('div'); g.className='hotspot';
     g.style.left=h.x+'%'; g.style.top=h.y+'%';
-    g.style.width=g.style.height=(h.r * 2) +'px'; // 힌트 원 크기 조절
+    // 아래와 같이 'hotspot'의 기본 크기(72px)를 사용하도록 수정합니다.
     g.style.opacity=.75; g.style.borderStyle='solid';
-    $stage.appendChild(g);
-    setTimeout(()=> g.remove(), 1600);
+    $stage.appendChild(g); setTimeout(()=> g.remove(),1600);
   }
 }
 
