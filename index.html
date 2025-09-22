@@ -76,7 +76,7 @@
   <main class="screens-wrapper">
     <section id="screen-start" class="screen card" role="region" aria-label="시작 화면">
       <div class="row">
-        <h2 style="margin:0">영상 선택하기</h2>
+        <h2 style="margin:0">1단계 영상</h2>
         <span class="grow"></span>
         <button id="btn-reset" class="ghost" title="진행 기록 초기화">처음부터 도전하기</button>
       </div>
@@ -100,7 +100,7 @@
         <button id="btn-exit" class="ghost">← 처음 화면으로 돌아가기</button>
       </div>
 
-      <div class="sub" id="play-caption">어색한 부분을 찾아 클릭해요!</div>
+      <div class="sub" id="play-caption">진짜와 다른 부분을 찾아 클릭해요!</div>
       <div id="stage" class="stage" tabindex="0" aria-label="단서를 찾는 영역"></div>
       
       <div class="row" style="margin-top:12px">
@@ -304,7 +304,7 @@ function playStep(){
   $foundSpans.forEach(el => el.textContent='0');
   $needSpans.forEach(el => el.textContent=ROUND.need);
   $playTitle.textContent = `🎬 ${ROUND.step + 1}단계 탐색 중`;
-  $playCaption.textContent = `어색한 부분 ${ROUND.need}곳을 찾아 클릭해요!`;
+  $playCaption.textContent = `진짜와 다른 부분 ${ROUND.need}곳을 찾아 클릭해요!`;
 
   $stage.innerHTML = '';
   const video = document.createElement('video');
