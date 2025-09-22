@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>2차시 | 영상 탐정단의 움직이는 비밀: 진짜가 궁금해요</title>
+<title>영상 탐정단의 움직이는 비밀: 진짜가 궁금해요</title>
 <style>
   :root{
     --bg:#e6f2ff;--panel:#ffffffee;--muted:#64748b;--text:#1f2937;
@@ -58,19 +58,35 @@
   
   footer{margin-top:18px;text-align:center;color:#6b7280;font-size:13px;flex-shrink:0}
 
-  /* 가독성 업: 전체화면에서 폰트/버튼 확대 */
-  .difficulty-row{font-size:clamp(16px,2.5vw,20px)}
-  .max:fullscreen h2{font-size:clamp(22px,3vw,28px)}
-  .max:fullscreen .difficulty-row{justify-content:center;font-size:clamp(22px,3vw,28px)}
-  .max:fullscreen .grid{gap:24px}
-  .max:fullscreen .thumb .ghost{font-size:22px;padding:16px 22px}
-
   /* 플레이 화면: 스크롤 없이 한 화면에 맞춤 */
   #screen-play{flex:1;display:flex;flex-direction:column}
   #screen-play .stage{flex:1;display:flex;align-items:center;justify-content:center;max-height:70vh}
   #screen-play video{max-width:100%;max-height:100%;object-fit:contain}
 
   @media (max-width:480px){ header.row{justify-content:center} }
+  
+  /* 전체화면 스타일 추가 */
+  .max:fullscreen {
+    padding: 0;
+    background: #000;
+  }
+  .max:fullscreen .card {
+    border-radius: 0;
+    height: 100%;
+    border: 0;
+    background: #000;
+    display: flex;
+    flex-direction: column;
+  }
+  .max:fullscreen .screens-wrapper {
+    height: 100%;
+  }
+  .max:fullscreen #screen-play {
+    padding: 12px;
+  }
+  .max:fullscreen .stage {
+    max-height: initial;
+  }
 </style>
 </head>
 <body>
@@ -112,6 +128,12 @@
 
       <div class="sub" id="play-caption">어색한 부분을 찾아 클릭해요!</div>
       <div id="stage" class="stage" tabindex="0" aria-label="단서를 찾는 영역"></div>
+      
+      <div class="row" style="margin-top:12px">
+        <span class="pill">찾은 단서: <b class="found-count">0</b>/<b class="need-count">1</b></span>
+        <span class="grow"></span>
+        <button id="btn-hint" class="ghost">💡 힌트 보기</button>
+      </div>
 
       <div id="result" hidden>
         <div class="divider"></div>
@@ -160,8 +182,6 @@ function speak(text){
 
 <script>
 /* -------------------- 콘텐츠 (영상 경로) -------------------- */
-// 💡 아래 fake와 orig에 실제 영상 파일 경로를 넣어주세요.
-//    (예: 'videos/ai-video-1.mp4' 또는 GitHub Raw URL)
 const CONTENT = [
   { 
     id: 'vid-1',
@@ -202,7 +222,6 @@ const $playTitle = qs('#play-title');
 let GLOBAL = { startedAt:0, timerId:null, sessionFound:0, audio:false, dev:false, cleared:{} };
 let ROUND  = { item: null, lock: false, currentItemIndex: 0, found: false };
 
-// "처음부터 도전하기"는 영상 버전에서는 진행 기록 초기화 역할
 const STORAGE_KEY = 'video_cleared_items_v1';
 function loadClears(){ try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}'); }catch(e){ return {}; } }
 function saveClears(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(GLOBAL.cleared||{})); }
@@ -212,19 +231,21 @@ function toast(msg){ $toast.textContent=msg; $toast.hidden=false; clearTimeout(t
   toast._t=setTimeout(()=> $toast.hidden=true, 1400); }
 
 function startTimer(){
-  GLOBAL.startedAt = Date.now();
+  let t0 = sessionStorage.getItem('sessionStartTime');
+  if(!t0){ t0=Date.now(); sessionStorage.setItem('sessionStartTime', t0); }
+  
   clearInterval(GLOBAL.timerId);
   GLOBAL.timerId = setInterval(()=>{
-    const s = Math.floor((Date.now()-GLOBAL.startedAt)/1000);
+    const s=Math.floor((Date.now()-t0)/1000);
     const mm=String(Math.floor(s/60)).padStart(2,'0');
     const ss=String(s%60).padStart(2,'0');
     if($statTime) $statTime.textContent=`${mm}:${ss}`;
-  }, 250);
+  },1000);
 }
 function navPlay(on){ 
   $start.hidden = on; 
   $play.hidden = !on;
-  document.querySelectorAll('video').forEach(v => v.pause()); // 화면 전환 시 모든 비디오 정지
+  document.querySelectorAll('video').forEach(v => v.pause());
 }
 
 /* ---------- UI 빌드 & 진행 ---------- */
@@ -250,15 +271,14 @@ function buildGrid() {
   });
 }
 
-// 특정 영상 플레이 시작
 function playVideo(index) {
   const item = CONTENT[index];
   ROUND = { item: item, lock: false, currentItemIndex: index, found: false };
   
   $result.hidden = true;
+  qs('.found-count').textContent = '0';
   $playTitle.textContent = `🎬 ${index + 1}번 영상 탐색 중`;
 
-  // 스테이지에 비디오 생성
   $stage.innerHTML = '';
   const video = document.createElement('video');
   video.src = item.fake;
@@ -270,38 +290,35 @@ function playVideo(index) {
   
   $stage.onclick = onStageClick;
   qs('#btn-exit').onclick = () => navPlay(false);
+  qs('#btn-hint').onclick = () => showHint(item);
 
-  startTimer(); // 타이머 시작
   navPlay(true);
   speakToast('틀린 부분을 찾아 클릭해보세요!');
 }
 
-// 스테이지(영상) 클릭 이벤트
 function onStageClick(e) {
   if (ROUND.lock) return;
   const rect = $stage.getBoundingClientRect();
   const x = ((e.clientX - rect.left) / rect.width) * 100;
   const y = ((e.clientY - rect.top) / rect.height) * 100;
 
-  // 개발자 모드일 때만 콘솔에 좌표 출력
   if (GLOBAL.dev) {
     console.log(`[개발자 모드] x: ${x.toFixed(1)}, y: ${y.toFixed(1)}`);
   }
 
   const isCorrect = (ROUND.item.spots || []).some(
-    h => Math.hypot(x - h.x, y - h.y) <= (h.r || 10) + 5 // +5로 정답 인식 범위 확대
+    h => Math.hypot(x - h.x, y - h.y) <= (h.r || 10) + 5
   );
 
   if (isCorrect) {
     onWin();
     speakToast('정답! 잘 찾았어요!');
   } else {
-    ringAt(x,y,false); // 오답 시 링 표시
+    ringAt(x,y,false);
     speakToast('괜찮아요, 조금 더 살펴봐요');
   }
 }
 
-// 링 이펙트 (오답 시)
 function ringAt(px,py,good){
   const m=document.createElement('div');
   m.className='hotspot'+(good?' found':'');
@@ -311,36 +328,47 @@ function ringAt(px,py,good){
   if(!good) setTimeout(()=> m.remove(), 1500);
 }
 
-// 정답 맞혔을 때
+function showHint(item){
+  const msg='여기를 조금 더 살펴볼까요?';
+  speakToast(msg);
+  const h = (item.spots||[])[0];
+  if(h){
+    const g=document.createElement('div'); g.className='hotspot';
+    g.style.left=h.x+'%'; g.style.top=h.y+'%';
+    g.style.width=g.style.height=(h.r*2.5)+'px';
+    g.style.opacity=.75; g.style.borderStyle='solid';
+    $stage.appendChild(g);
+    setTimeout(()=> g.remove(), 1600);
+  }
+}
+
 function onWin() {
   ROUND.lock = true;
-  clearInterval(GLOBAL.timerId); // 타이머 중지
-  GLOBAL.sessionFound++; $statFound.textContent = GLOBAL.sessionFound; // 총 찾은 단서 업데이트
-
+  if (!GLOBAL.cleared[ROUND.item.id]) {
+    GLOBAL.sessionFound++; 
+    $statFound.textContent = GLOBAL.sessionFound;
+  }
+  
+  qs('.found-count').textContent = '1';
   $result.hidden = false;
   
-  // 기존 영상 정지
   $stage.querySelector('video')?.pause();
 
-  // 원본 영상 보여주기
   $original.innerHTML = '';
   const origVideo = document.createElement('video');
   origVideo.src = ROUND.item.orig;
-  origVideo.controls = true; // 컨트롤러 표시
+  origVideo.controls = true;
   origVideo.autoplay = true;
-  origVideo.loop = true; // 원본도 반복 재생
-  origVideo.muted = true; // 원본도 기본 음소거
+  origVideo.loop = true;
+  origVideo.muted = false; // 원본은 소리 켜기
   origVideo.playsinline = true;
   $original.appendChild(origVideo);
 
-  // 현재 영상 클리어 처리
   GLOBAL.cleared[ROUND.item.id] = true;
-  saveClears(); // 클리어 상태 저장
+  saveClears();
 
-  // 다음 영상 또는 처음 화면으로
-  const nextItemIndex = (ROUND.currentItemIndex + 1);
-  const nextItem = CONTENT[nextItemIndex];
   const allCleared = CONTENT.every(item => GLOBAL.cleared[item.id]);
+  const nextItemIndex = (ROUND.currentItemIndex + 1) % CONTENT.length;
 
   const $nextButton = qs('#btn-other');
   if (allCleared) {
@@ -351,26 +379,24 @@ function onWin() {
 
   $nextButton.onclick = () => {
     if (allCleared) {
-      navPlay(false); // 모든 영상 클리어 시 홈으로
+      navPlay(false);
+      buildGrid(); // 홈으로 돌아갈 때 그리드 갱신
       speakToast('모든 영상을 완료했어요! 대단해요!');
     } else {
-      playVideo(nextItemIndex); // 다음 영상 재생
+      playVideo(nextItemIndex);
     }
   };
   
-  // 다시 도전하기 버튼
   qs('#btn-replay').onclick = () => playVideo(ROUND.currentItemIndex);
-
   speak('진짜 모습 확인 완료! 다음 영상으로 가볼까요?');
 }
-
 
 /* ---------- 초기화/전체화면/세션타이머 ---------- */
 (function init() {
   GLOBAL.cleared = loadClears();
   buildGrid();
+  startTimer();
 
-  // 개발자 모드(헤드라인 5연속 클릭)
   let clickCount=0, clickTimer=null;
   qs('.headline').onclick = ()=>{
     clickCount++; clearTimeout(clickTimer);
@@ -378,7 +404,6 @@ function onWin() {
     if(clickCount>=5){ GLOBAL.dev=true; clickCount=0; toast('✨ 개발자 모드 ON'); }
   };
 
-  // 전체화면
   const $fullscreenTarget = qs('.max');
   qs('#btn-fullscreen').onclick = ()=>{
     if(!document.fullscreenElement){
@@ -390,22 +415,11 @@ function onWin() {
     }
   };
 
-  // 화면 상단 전체 사용 시간(세션 유지)
-  let t0 = sessionStorage.getItem('sessionStartTime');
-  if(!t0){ t0=Date.now(); sessionStorage.setItem('sessionStartTime', t0); }
-  setInterval(()=>{
-    const s=Math.floor((Date.now()-t0)/1000);
-    const mm=String(Math.floor(s/60)).padStart(2,'0');
-    const ss=String(s%60).padStart(2,'0');
-    if($statTime) $statTime.textContent=`${mm}:${ss}`;
-  },1000);
-
-  // “처음부터 도전하기” 버튼 (여기서는 모든 영상 클리어 기록 초기화)
   qs('#btn-reset').onclick = ()=>{
     if (confirm('모든 영상 클리어 기록을 지우고 처음부터 다시 도전할까요?')) {
       localStorage.removeItem(STORAGE_KEY);
       GLOBAL.cleared = {};
-      GLOBAL.sessionFound = 0; // 찾은 단서 초기화
+      GLOBAL.sessionFound = 0;
       $statFound.textContent = '0';
       buildGrid();
       speakToast('진행 기록이 초기화되었습니다. 처음부터 다시 도전해요!');
