@@ -379,7 +379,7 @@ function showHint(item){
     const h=item.spots[i];
     const g=document.createElement('div'); g.className='hotspot';
     g.style.left=h.x+'%'; g.style.top=h.y+'%';
-    // 아래와 같이 'hotspot'의 기본 크기(72px)를 사용하도록 수정합니다.
+    g.style.width=g.style.height=(h.r*60)+'px';
     g.style.opacity=.75; g.style.borderStyle='solid';
     $stage.appendChild(g); setTimeout(()=> g.remove(),1600);
   }
