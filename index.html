@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>영상 탐정단의 움직이는 비밀: 진짜가 궁금해요</title>
+<title>2차시 | 영상 탐정단의 움직이는 비밀: 진짜가 궁금해요</title>
 <style>
   :root{
     --bg:#e6f2ff;--panel:#ffffffee;--muted:#64748b;--text:#1f2937;
@@ -20,10 +20,12 @@
   .grow{flex:1}
   .headline{font-size:clamp(22px,3.2vw,30px);font-weight:900;margin:0}
   .sub{color:var(--muted);font-size:14px}
-  .btn, .ghost{appearance:none;border:0;border-radius:18px;padding:10px 18px;font-size:18px;font-weight:800;cursor:pointer}
+  .btn, .ghost, .pill{appearance:none;border:0;border-radius:18px;padding:10px 18px;font-size:18px;font-weight:800;cursor:pointer}
   header{margin-bottom:16px;flex-shrink:0}
   .btn{color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 8px 18px #247cff33}
   .ghost{background:#fff;color:var(--text);border:1px solid var(--border)}
+  .pill{background:var(--soft);color:var(--muted);font-size:14px;padding:6px 12px;font-weight:600;display:inline-flex;align-items:center;gap:4px;}
+
   label{font-size:18px; cursor: pointer;}
   .screen{padding:22px}
   .screens-wrapper{flex-grow:1;min-height:0;display:flex;flex-direction:column}
@@ -44,27 +46,61 @@
   .hotspot.found{border-color:var(--good);box-shadow:0 0 0 6px #16a34a33}
   .ping{position:absolute;inset:0;border-radius:inherit;border:3px solid transparent;animation:ping 1.1s ease-out 2}
   @keyframes ping{0%{box-shadow:0 0 0 0 #0b65f555}100%{box-shadow:0 0 0 24px transparent}}
+  
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);
+         background:#111827e6;color:#fff;border:1px solid #00000022;padding:12px 16px;
+         border-radius:14px;font-size:16px;z-index:9999}
+  .captions{position:fixed;left:50%;top:12px;transform:translateX(-50%);
+            background:#111827e6;color:#fff;padding:8px 12px;border-radius:12px;font-size:15px;z-index:9999}
+
   .divider{height:1px;background:var(--border);margin:12px 0}
   .kudos{font-weight:900;background:linear-gradient(135deg,#34d399,var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent}
   
+  footer{margin-top:18px;text-align:center;color:#6b7280;font-size:13px;flex-shrink:0}
+
+  /* 가독성 업: 전체화면에서 폰트/버튼 확대 */
+  .difficulty-row{font-size:clamp(16px,2.5vw,20px)}
+  .max:fullscreen h2{font-size:clamp(22px,3vw,28px)}
+  .max:fullscreen .difficulty-row{justify-content:center;font-size:clamp(22px,3vw,28px)}
+  .max:fullscreen .grid{gap:24px}
+  .max:fullscreen .thumb .ghost{font-size:22px;padding:16px 22px}
+
   /* 플레이 화면: 스크롤 없이 한 화면에 맞춤 */
   #screen-play{flex:1;display:flex;flex-direction:column}
   #screen-play .stage{flex:1;display:flex;align-items:center;justify-content:center;max-height:70vh}
   #screen-play video{max-width:100%;max-height:100%;object-fit:contain}
+
+  @media (max-width:480px){ header.row{justify-content:center} }
 </style>
 </head>
 <body>
 <div class="max">
   <header class="row">
     <h1 class="headline">영상 탐정단의 움직이는 비밀: 진짜가 궁금해요</h1>
+    <span class="pill">전체 합계: 찾은 단서 <b id="stat-found">0</b> · 전체 사용 시간 <b id="stat-time">00:00</b></span>
     <span class="grow"></span>
     <button id="btn-fullscreen" class="ghost">🖼️ 전체화면</button>
+    <button id="btn-audio" class="ghost">🔈 음성 OFF</button>
   </header>
 
   <main class="screens-wrapper">
     <section id="screen-start" class="screen card" role="region" aria-label="시작 화면">
-      <h2 style="margin:0">영상 선택하기</h2>
+      <div class="row">
+        <h2 style="margin:0">영상 선택하기</h2>
+        <span class="grow"></span>
+        <button id="btn-reset" class="ghost" title="진행 기록 초기화">처음부터 도전하기</button>
+      </div>
+      
       <div class="grid" id="grid" style="margin-top:16px"></div>
+
+      <p class="sub" id="policy-line" style="margin-top:12px">
+        ＊ 이 활동은 <b>영상 속 실제와 다른 단서</b>를 찾아보며,
+        <b>영상이 실제와 다르게 바뀔 수 있음을 배우고 설명</b>할 수 있도록 돕습니다.<br>
+        ＊ 찾아낸 내용을 통해 비판적으로 생각하는 힘을 기르고, 디지털 자료를 사용할 때는
+        <b>허락받기·확인하기·시간 지키기</b> 약속을 실천합니다.<br>
+        ＊ 이 웹앱은 <b>개인 정보를 수집·저장하지 않습니다.</b><br>
+        ＊ 공유할 때에는 반드시 <b>출처 표기와 사실 확인</b>을 함께 지켜주세요.
+      </p>
     </section>
 
     <section id="screen-play" class="screen card" role="region" aria-label="플레이 화면" hidden>
@@ -90,36 +126,66 @@
       </div>
     </section>
   </main>
+
+  <footer>제작자: 김혜인 · 문의: <a href="mailto:hyein_1221@hanmail.net">hyein_1221@hanmail.net</a></footer>
 </div>
+
+<div id="captions" class="captions" hidden></div>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+/* ---------- 음성 & 자막 ---------- */
+function showCaption(msg){
+  const c = document.getElementById('captions');
+  c.textContent = msg; c.hidden = false;
+  clearTimeout(showCaption._t);
+  showCaption._t = setTimeout(()=> c.hidden = true, 1400);
+}
+function speak(text){
+  if(!GLOBAL.audio){ showCaption(text); return; }
+  try{
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang='ko-KR'; u.rate=1; u.pitch=1.15;
+    const apply=()=>{
+      const ko = speechSynthesis.getVoices().find(v=>v.lang.startsWith('ko'));
+      if(ko) u.voice = ko;
+      speechSynthesis.cancel(); speechSynthesis.speak(u);
+    };
+    if(!speechSynthesis.getVoices().length){ speechSynthesis.onvoiceschanged = apply; }
+    else apply();
+  }catch(e){}
+  showCaption(text);
+}
+</script>
 
 <script>
 /* -------------------- 콘텐츠 (영상 경로) -------------------- */
 // 💡 아래 fake와 orig에 실제 영상 파일 경로를 넣어주세요.
+//    (예: 'videos/ai-video-1.mp4' 또는 GitHub Raw URL)
 const CONTENT = [
   { 
     id: 'vid-1',
-    // GitHub에 영상을 올리고 그 Raw URL을 사용하시면 됩니다.
-    fake: 'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4', // 👈 AI 영상 경로
-    orig: 'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4', // 👈 원본 영상 경로
-    spots: [{x: 50, y: 50, r: 15}] // 정답 좌표
+    fake: 'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4', 
+    orig: 'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4', 
+    spots: [{x: 50, y: 50, r: 15}] 
   },
   { 
     id: 'vid-2',
-    fake: 'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4', // 👈 AI 영상 경로
-    orig: 'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4', // 👈 원본 영상 경로
-    spots: [{x: 25, y: 70, r: 10}] // 정답 좌표
+    fake: 'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4', 
+    orig: 'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4', 
+    spots: [{x: 25, y: 70, r: 10}] 
   },
   { 
     id: 'vid-3',
-    fake: 'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4', // 👈 AI 영상 경로
-    orig: 'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4', // 👈 원본 영상 경로
-    spots: [{x: 75, y: 40, r: 12}, {x: 85, y: 80, r: 8}] // 정답 좌표 2개
+    fake: 'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4', 
+    orig: 'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4', 
+    spots: [{x: 75, y: 40, r: 12}, {x: 85, y: 80, r: 8}] 
   },
 ];
 </script>
 
 <script>
-/* -------------------- 앱 로직 (이 부분은 수정할 필요 없어요) -------------------- */
+/* ---------- 전역 상태/유틸 ---------- */
 const qs = s => document.querySelector(s);
 const $start = qs('#screen-start');
 const $play  = qs('#screen-play');
@@ -127,28 +193,57 @@ const $grid  = qs('#grid');
 const $stage = qs('#stage');
 const $original = qs('#original');
 const $result   = qs('#result');
+const $toast    = qs('#toast');
+const $btnAudio = qs('#btn-audio');
+const $statFound = qs('#stat-found');
+const $statTime  = qs('#stat-time');
 const $playTitle = qs('#play-title');
 
-let ROUND = { item: null, lock: false, nextIndex: 0 };
+let GLOBAL = { startedAt:0, timerId:null, sessionFound:0, audio:false, dev:false, cleared:{} };
+let ROUND  = { item: null, lock: false, currentItemIndex: 0, found: false };
 
-// 화면 전환
+// "처음부터 도전하기"는 영상 버전에서는 진행 기록 초기화 역할
+const STORAGE_KEY = 'video_cleared_items_v1';
+function loadClears(){ try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}'); }catch(e){ return {}; } }
+function saveClears(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(GLOBAL.cleared||{})); }
+
+function speakToast(msg){ speak(msg); toast(msg); }
+function toast(msg){ $toast.textContent=msg; $toast.hidden=false; clearTimeout(toast._t);
+  toast._t=setTimeout(()=> $toast.hidden=true, 1400); }
+
+function startTimer(){
+  GLOBAL.startedAt = Date.now();
+  clearInterval(GLOBAL.timerId);
+  GLOBAL.timerId = setInterval(()=>{
+    const s = Math.floor((Date.now()-GLOBAL.startedAt)/1000);
+    const mm=String(Math.floor(s/60)).padStart(2,'0');
+    const ss=String(s%60).padStart(2,'0');
+    if($statTime) $statTime.textContent=`${mm}:${ss}`;
+  }, 250);
+}
 function navPlay(on){ 
   $start.hidden = on; 
   $play.hidden = !on;
-  // 화면 전환 시 모든 비디오 정지
-  document.querySelectorAll('video').forEach(v => v.pause());
+  document.querySelectorAll('video').forEach(v => v.pause()); // 화면 전환 시 모든 비디오 정지
 }
 
-// 시작 화면 만들기
+/* ---------- UI 빌드 & 진행 ---------- */
+$btnAudio.onclick = ()=>{
+  GLOBAL.audio = !GLOBAL.audio;
+  $btnAudio.textContent = GLOBAL.audio? '🔊 음성 ON' : '🔈 음성 OFF';
+};
+
 function buildGrid() {
   $grid.innerHTML = '';
   CONTENT.forEach((item, index) => {
     const d = document.createElement('div');
     d.className = 'thumb';
-    // 썸네일용 비디오 태그. muted, playsinline, autoplay는 자동재생을 위함
+    const isCleared = GLOBAL.cleared[item.id];
+    const buttonText = isCleared ? `✅ ${index + 1}번 영상 클리어` : `${index + 1}번 영상 도전`;
+
     d.innerHTML = `
       <video src="${item.fake}" muted playsinline autoplay loop></video>
-      <button class="ghost">${index + 1}번 영상 도전</button>
+      <button class="ghost" ${isCleared ? 'disabled' : ''}>${buttonText}</button>
     `;
     d.querySelector('button').onclick = () => playVideo(index);
     $grid.appendChild(d);
@@ -158,7 +253,7 @@ function buildGrid() {
 // 특정 영상 플레이 시작
 function playVideo(index) {
   const item = CONTENT[index];
-  ROUND = { item: item, lock: false, nextIndex: (index + 1) % CONTENT.length };
+  ROUND = { item: item, lock: false, currentItemIndex: index, found: false };
   
   $result.hidden = true;
   $playTitle.textContent = `🎬 ${index + 1}번 영상 탐색 중`;
@@ -176,7 +271,9 @@ function playVideo(index) {
   $stage.onclick = onStageClick;
   qs('#btn-exit').onclick = () => navPlay(false);
 
+  startTimer(); // 타이머 시작
   navPlay(true);
+  speakToast('틀린 부분을 찾아 클릭해보세요!');
 }
 
 // 스테이지(영상) 클릭 이벤트
@@ -186,27 +283,40 @@ function onStageClick(e) {
   const x = ((e.clientX - rect.left) / rect.width) * 100;
   const y = ((e.clientY - rect.top) / rect.height) * 100;
 
+  // 개발자 모드일 때만 콘솔에 좌표 출력
+  if (GLOBAL.dev) {
+    console.log(`[개발자 모드] x: ${x.toFixed(1)}, y: ${y.toFixed(1)}`);
+  }
+
   const isCorrect = (ROUND.item.spots || []).some(
-    h => Math.hypot(x - h.x, y - h.y) <= (h.r || 10)
+    h => Math.hypot(x - h.x, y - h.y) <= (h.r || 10) + 5 // +5로 정답 인식 범위 확대
   );
 
   if (isCorrect) {
     onWin();
+    speakToast('정답! 잘 찾았어요!');
   } else {
-    // 오답 클릭 시 효과 (선택사항)
-    const ring = document.createElement('div');
-    ring.className = 'hotspot';
-    ring.style.left = x + '%';
-    ring.style.top = y + '%';
-    ring.style.opacity = 1;
-    $stage.appendChild(ring);
-    setTimeout(() => ring.remove(), 1000);
+    ringAt(x,y,false); // 오답 시 링 표시
+    speakToast('괜찮아요, 조금 더 살펴봐요');
   }
+}
+
+// 링 이펙트 (오답 시)
+function ringAt(px,py,good){
+  const m=document.createElement('div');
+  m.className='hotspot'+(good?' found':'');
+  m.style.left=px+'%'; m.style.top=py+'%'; m.style.opacity=1;
+  m.innerHTML='<span class="ping"></span>';
+  $stage.appendChild(m);
+  if(!good) setTimeout(()=> m.remove(), 1500);
 }
 
 // 정답 맞혔을 때
 function onWin() {
   ROUND.lock = true;
+  clearInterval(GLOBAL.timerId); // 타이머 중지
+  GLOBAL.sessionFound++; $statFound.textContent = GLOBAL.sessionFound; // 총 찾은 단서 업데이트
+
   $result.hidden = false;
   
   // 기존 영상 정지
@@ -218,29 +328,87 @@ function onWin() {
   origVideo.src = ROUND.item.orig;
   origVideo.controls = true; // 컨트롤러 표시
   origVideo.autoplay = true;
+  origVideo.loop = true; // 원본도 반복 재생
+  origVideo.muted = true; // 원본도 기본 음소거
+  origVideo.playsinline = true;
   $original.appendChild(origVideo);
 
-  // 버튼 설정
-  qs('#btn-replay').onclick = () => playVideo(CONTENT.indexOf(ROUND.item));
-  qs('#btn-other').onclick = () => {
-      // 모든 영상 클리어 시 처음으로, 아니면 다음 영상
-      if (CONTENT.every(item => item.cleared)) {
-          navPlay(false);
-      } else {
-          playVideo(ROUND.nextIndex);
-      }
+  // 현재 영상 클리어 처리
+  GLOBAL.cleared[ROUND.item.id] = true;
+  saveClears(); // 클리어 상태 저장
+
+  // 다음 영상 또는 처음 화면으로
+  const nextItemIndex = (ROUND.currentItemIndex + 1);
+  const nextItem = CONTENT[nextItemIndex];
+  const allCleared = CONTENT.every(item => GLOBAL.cleared[item.id]);
+
+  const $nextButton = qs('#btn-other');
+  if (allCleared) {
+    $nextButton.textContent = '모든 영상 완료! 홈으로';
+  } else {
+    $nextButton.textContent = '다음 영상 보기 →';
+  }
+
+  $nextButton.onclick = () => {
+    if (allCleared) {
+      navPlay(false); // 모든 영상 클리어 시 홈으로
+      speakToast('모든 영상을 완료했어요! 대단해요!');
+    } else {
+      playVideo(nextItemIndex); // 다음 영상 재생
+    }
   };
+  
+  // 다시 도전하기 버튼
+  qs('#btn-replay').onclick = () => playVideo(ROUND.currentItemIndex);
+
+  speak('진짜 모습 확인 완료! 다음 영상으로 가볼까요?');
 }
 
 
-// 초기화
+/* ---------- 초기화/전체화면/세션타이머 ---------- */
 (function init() {
+  GLOBAL.cleared = loadClears();
   buildGrid();
-  qs('#btn-fullscreen').onclick = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen();
-    } else {
-      document.exitFullscreen();
+
+  // 개발자 모드(헤드라인 5연속 클릭)
+  let clickCount=0, clickTimer=null;
+  qs('.headline').onclick = ()=>{
+    clickCount++; clearTimeout(clickTimer);
+    clickTimer=setTimeout(()=>clickCount=0,1000);
+    if(clickCount>=5){ GLOBAL.dev=true; clickCount=0; toast('✨ 개발자 모드 ON'); }
+  };
+
+  // 전체화면
+  const $fullscreenTarget = qs('.max');
+  qs('#btn-fullscreen').onclick = ()=>{
+    if(!document.fullscreenElement){
+      ($fullscreenTarget.requestFullscreen||$fullscreenTarget.webkitRequestFullscreen||$fullscreenTarget.msRequestFullscreen).call($fullscreenTarget);
+      qs('#btn-fullscreen').textContent='🖼️ 전체화면 닫기';
+    }else{
+      document.exitFullscreen && document.exitFullscreen();
+      qs('#btn-fullscreen').textContent='🖼️ 전체화면';
+    }
+  };
+
+  // 화면 상단 전체 사용 시간(세션 유지)
+  let t0 = sessionStorage.getItem('sessionStartTime');
+  if(!t0){ t0=Date.now(); sessionStorage.setItem('sessionStartTime', t0); }
+  setInterval(()=>{
+    const s=Math.floor((Date.now()-t0)/1000);
+    const mm=String(Math.floor(s/60)).padStart(2,'0');
+    const ss=String(s%60).padStart(2,'0');
+    if($statTime) $statTime.textContent=`${mm}:${ss}`;
+  },1000);
+
+  // “처음부터 도전하기” 버튼 (여기서는 모든 영상 클리어 기록 초기화)
+  qs('#btn-reset').onclick = ()=>{
+    if (confirm('모든 영상 클리어 기록을 지우고 처음부터 다시 도전할까요?')) {
+      localStorage.removeItem(STORAGE_KEY);
+      GLOBAL.cleared = {};
+      GLOBAL.sessionFound = 0; // 찾은 단서 초기화
+      $statFound.textContent = '0';
+      buildGrid();
+      speakToast('진행 기록이 초기화되었습니다. 처음부터 다시 도전해요!');
     }
   };
 })();
