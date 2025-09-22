@@ -185,6 +185,7 @@ const CONTENT = [
 <script>
 /* ---------- 전역 상태/유틸 ---------- */
 const qs = s => document.querySelector(s);
+const qsa = s => [...document.querySelectorAll(s)]; // <<< 이 줄이 추가되었습니다!
 const $start = qs('#screen-start');
 const $play  = qs('#screen-play');
 const $grid  = qs('#grid');
