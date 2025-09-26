@@ -4,6 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>2차시 | 영상 탐정단의 움직이는 비밀: 진짜가 궁금해요</title>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
 <style>
   :root{
     --bg:#e6f2ff;--panel:#ffffffee;--muted:#64748b;--text:#1f2937;
@@ -185,14 +186,14 @@ const CONTENT = [
     need: 1,
     fake: GITHUB_URL_BASE + 'ai_4.mp4', 
     orig: GITHUB_URL_BASE + 'real_4.mp4', 
-    spots: [{x: 36, y: 60.9, r: 15}] // <-- ⚠️ 중요: 이 좌표는 임시값입니다!
+    spots: [{x: 36, y: 60.9, r: 15}] 
   },
   { 
     id: 'vid-5',
     need: 1,
     fake: GITHUB_URL_BASE + 'ai_5.mp4', 
     orig: GITHUB_URL_BASE + 'real_5.mp4', 
-    spots: [{x: 64.2, y: 45.1, r: 15}] // <-- ⚠️ 중요: 이 좌표들은 임시값입니다!
+    spots: [{x: 64.2, y: 45.1, r: 15}] 
   },
 ];
 </script>
@@ -399,6 +400,13 @@ function onWin() {
   ROUND.lock = true;
   stopPlayTimer();
   saveClears(ROUND.item.id);
+
+  // ❇️ 2. 폭죽 효과 함수 호출
+  confetti({
+    particleCount: 150, // 파티클 개수
+    spread: 100, // 퍼지는 각도
+    origin: { y: 0.6 } // 시작 위치 (y축 기준)
+  });
   
   $result.hidden = false;
   $stage.querySelector('video')?.pause();
