@@ -47,8 +47,8 @@
   @keyframes ping{0%{box-shadow:0 0 0 0 #0b65f555}100%{box-shadow:0 0 0 24px transparent}}
   
   .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);
-         background:#111827e6;color:#fff;border:1px solid #00000022;padding:12px 16px;
-         border-radius:14px;font-size:16px;z-index:9999}
+        background:#111827e6;color:#fff;border:1px solid #00000022;padding:12px 16px;
+        border-radius:14px;font-size:16px;z-index:9999}
   .captions{position:fixed;left:50%;top:12px;transform:translateX(-50%);
             background:#111827e6;color:#fff;padding:8px 12px;border-radius:12px;font-size:15px;z-index:9999}
 
@@ -76,7 +76,7 @@
   <main class="screens-wrapper">
     <section id="screen-start" class="screen card" role="region" aria-label="시작 화면">
       <div class="row">
-        <h2 style="margin:0">1단계 영상</h2>
+        <h2 style="margin:0">영상 목록</h2>
         <span class="grow"></span>
         <button id="btn-reset" class="ghost" title="진행 기록 초기화">처음부터 도전하기</button>
       </div>
@@ -156,27 +156,43 @@ function speak(text){
 
 <script>
 /* -------------------- 콘텐츠 (영상 경로) -------------------- */
+const GITHUB_URL_BASE = 'https://raw.githubusercontent.com/hyein1221/ai-ethics-kids-movie/main/videos/';
+
 const CONTENT = [
   { 
     id: 'vid-1',
-    need: 1,
-    fake: 'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4', 
-    orig: 'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4', 
-    spots: [{x: 50, y: 50, r: 15}] 
+    need: 1, // 찾아야 할 단서 개수
+    fake: GITHUB_URL_BASE + 'ai_1.mp4', 
+    orig: GITHUB_URL_BASE + 'real_1.mp4', 
+    spots: [{x: 23, y: 24, r: 15}] // {x좌표(%), y좌표(%), r반지름(%)}
   },
   { 
     id: 'vid-2',
     need: 1,
-    fake: 'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4', 
-    orig: 'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4', 
-    spots: [{x: 25, y: 70, r: 10}] 
+    fake: GITHUB_URL_BASE + 'ai_2.mp4', 
+    orig: GITHUB_URL_BASE + 'real_2.mp4', 
+    spots: [{x: 48, y: 52, r: 15}] 
   },
   { 
     id: 'vid-3',
+    need: 1,
+    fake: GITHUB_URL_BASE + 'ai_3.mp4', 
+    orig: GITHUB_URL_BASE + 'real_3.mp4', 
+    spots: [{x: 45, y: 55, r: 20}] 
+  },
+  { 
+    id: 'vid-4',
+    need: 1,
+    fake: GITHUB_URL_BASE + 'ai_4.mp4', 
+    orig: GITHUB_URL_BASE + 'real_4.mp4', 
+    spots: [{x: 50, y: 50, r: 15}] // <-- ⚠️ 중요: 이 좌표는 임시값입니다!
+  },
+  { 
+    id: 'vid-5',
     need: 2,
-    fake: 'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4', 
-    orig: 'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4', 
-    spots: [{x: 75, y: 40, r: 12}, {x: 85, y: 80, r: 8}] 
+    fake: GITHUB_URL_BASE + 'ai_5.mp4', 
+    orig: GITHUB_URL_BASE + 'real_5.mp4', 
+    spots: [{x: 25, y: 70, r: 10}, {x: 75, y: 40, r: 12}] // <-- ⚠️ 중요: 이 좌표들은 임시값입니다!
   },
 ];
 </script>
@@ -184,7 +200,7 @@ const CONTENT = [
 <script>
 /* ---------- 전역 상태/유틸 ---------- */
 const qs = s => document.querySelector(s);
-const qsa = s => [...document.querySelectorAll(s)]; // <<< 이 줄이 추가되었습니다!
+const qsa = s => [...document.querySelectorAll(s)];
 const $start = qs('#screen-start');
 const $play  = qs('#screen-play');
 const $grid  = qs('#grid');
@@ -202,15 +218,15 @@ const $foundSpans = qsa('.found-count');
 const $needSpans  = qsa('.need-count');
 
 
-let GLOBAL = { startedAt:0, timerId:null, sessionFound:0, audio:false, dev:false, cleared: false };
+let GLOBAL = { startedAt:0, timerId:null, sessionFound:0, audio:false, dev:false };
 let ROUND  = { step:0, item:null, found:new Set(), need:0, lock:false };
 
 let playTimerId = null;
 let playStartTime = 0;
 
-const STORAGE_KEY = 'video_cleared_v1';
-function loadClears(){ return localStorage.getItem(STORAGE_KEY) === 'true'; }
-function saveClears(){ localStorage.setItem(STORAGE_KEY, GLOBAL.cleared); }
+const STORAGE_KEY_PREFIX = 'video_cleared_v2_';
+function loadClears(id){ return localStorage.getItem(STORAGE_KEY_PREFIX + id) === 'true'; }
+function saveClears(id){ localStorage.setItem(STORAGE_KEY_PREFIX + id, 'true'); }
 
 function speakToast(msg){ speak(msg); toast(msg); }
 function toast(msg){ $toast.textContent=msg; $toast.hidden=false; clearTimeout(toast._t);
@@ -252,6 +268,7 @@ function navPlay(on){
   document.querySelectorAll('video').forEach(v => v.pause());
   if (!on) {
     stopPlayTimer();
+    buildGrid(); // 처음으로 돌아갈 때 그리드를 새로고침하여 클리어 상태 반영
   }
 }
 
@@ -263,37 +280,31 @@ $btnAudio.onclick = ()=>{
 
 function buildGrid() {
   $grid.innerHTML = '';
-  const d = document.createElement('div');
-  d.className = 'thumb';
-  const isCleared = GLOBAL.cleared;
-  const buttonText = isCleared ? `✅ 모든 단계 클리어` : `1단계 시작`;
-  const firstVideo = CONTENT[0];
+  CONTENT.forEach((item, index) => {
+    const d = document.createElement('div');
+    d.className = 'thumb';
+    const isCleared = loadClears(item.id);
+    const buttonText = isCleared ? `✅ ${index+1}단계 완료` : `${index+1}단계 시작`;
 
-  d.innerHTML = `
-    <video src="${firstVideo.fake}" muted playsinline autoplay loop></video>
-    <button class="ghost" ${isCleared ? 'disabled' : ''}>${buttonText}</button>
-  `;
-  d.querySelector('button').onclick = () => startPlay();
-  $grid.appendChild(d);
+    d.innerHTML = `
+      <video src="${item.fake}" muted playsinline loop></video>
+      <button class="ghost">${buttonText}</button>
+    `;
+    d.querySelector('video').oncanplay = e => e.target.play();
+    d.querySelector('button').onclick = () => startPlay(index);
+    $grid.appendChild(d);
+  });
 }
 
-function startPlay(){
-  ROUND = { step:0, item:null, found:new Set(), need:0, lock:false };
+function startPlay(stepIndex){
+  ROUND = { step:stepIndex, item:null, found:new Set(), need:0, lock:false };
   playStep();
 }
 
 function playStep(){
-  const items = CONTENT;
-  if(ROUND.step >= items.length){ 
-    GLOBAL.cleared = true;
-    saveClears();
-    navPlay(false);
-    buildGrid();
-    speakToast('모든 단계를 완료했어요! 대단해요!');
-    return;
-  }
+  const item = CONTENT[ROUND.step];
+  if(!item){ navPlay(false); return; } // 모든 단계를 마친 경우
 
-  const item = items[ROUND.step];
   ROUND.item = item;
   ROUND.found = new Set();
   ROUND.need = item.need || 1;
@@ -343,7 +354,7 @@ function onStageClick(e) {
   }
 
   const idx = (ROUND.item.spots || []).findIndex((h,i) => 
-    !ROUND.found.has(i) && Math.hypot(x - h.x, y - h.y) <= (h.r || 10) + 5
+    !ROUND.found.has(i) && Math.hypot(x - h.x, y - h.y) <= (h.r || 10)
   );
 
   if (idx >= 0) {
@@ -352,12 +363,12 @@ function onStageClick(e) {
     GLOBAL.sessionFound++; 
     $statFound.textContent = GLOBAL.sessionFound;
     
-    ringAt(x,y,true);
+    ringAt(ROUND.item.spots[idx].x, ROUND.item.spots[idx].y, true); // 정답 위치에 링 표시
     speakToast('정답! 잘 찾았어요');
     
     if(ROUND.found.size >= ROUND.need){ onWin(); }
   } else {
-    ringAt(x,y,false);
+    ringAt(x,y,false); // 클릭한 위치에 링 표시
     speakToast('괜찮아요, 조금 더 살펴봐요');
   }
 }
@@ -366,7 +377,7 @@ function ringAt(px,py,good){
   const m=document.createElement('div');
   m.className='hotspot'+(good?' found':'');
   m.style.left=px+'%'; m.style.top=py+'%'; m.style.opacity=1;
-  m.innerHTML='<span class="ping"></span>';
+  if(good) m.innerHTML='<span class="ping"></span>';
   $stage.appendChild(m);
   if(!good) setTimeout(()=> m.remove(), 1500);
 }
@@ -378,7 +389,7 @@ function showHint(item){
     const h=item.spots[i];
     const g=document.createElement('div'); g.className='hotspot';
     g.style.left=h.x+'%'; g.style.top=h.y+'%';
-    g.style.width=g.style.height=(h.r*60)+'px';
+    g.style.width=g.style.height=(h.r*2*($stage.clientWidth/100))+'px'; //반지름을 기준으로 크기 조절
     g.style.opacity=.75; g.style.borderStyle='solid';
     $stage.appendChild(g); setTimeout(()=> g.remove(),1600);
   }
@@ -387,6 +398,7 @@ function showHint(item){
 function onWin() {
   ROUND.lock = true;
   stopPlayTimer();
+  saveClears(ROUND.item.id);
   
   $result.hidden = false;
   $stage.querySelector('video')?.pause();
@@ -401,18 +413,15 @@ function onWin() {
   origVideo.playsinline = true;
   $original.appendChild(origVideo);
   
-  const last = ROUND.step >= CONTENT.length - 1;
+  const nextStep = ROUND.step + 1;
+  const last = nextStep >= CONTENT.length;
   const $nextButton = qs('#btn-other');
   $nextButton.textContent = last ? '홈으로' : '다음 단계 →';
   $nextButton.onclick = () => {
     if (last) {
-      GLOBAL.cleared = true;
-      saveClears();
       navPlay(false);
-      buildGrid();
     } else {
-      ROUND.step++;
-      playStep();
+      startPlay(nextStep);
     }
   };
   
@@ -422,7 +431,6 @@ function onWin() {
 
 /* ---------- 초기화 ---------- */
 (function init() {
-  GLOBAL.cleared = loadClears();
   buildGrid();
   startOverallTimer();
 
@@ -430,13 +438,12 @@ function onWin() {
   qs('.headline').onclick = ()=>{
     clickCount++; clearTimeout(clickTimer);
     clickTimer=setTimeout(()=>clickCount=0,1000);
-    if(clickCount>=5){ GLOBAL.dev=true; clickCount=0; toast('✨ 개발자 모드 ON'); }
+    if(clickCount>=5){ GLOBAL.dev=!GLOBAL.dev; clickCount=0; toast(`✨ 개발자 모드 ${GLOBAL.dev?'ON':'OFF'}`); }
   };
 
   qs('#btn-reset').onclick = ()=>{
     if (confirm('모든 진행 기록을 지우고 처음부터 다시 도전할까요?')) {
-      localStorage.removeItem(STORAGE_KEY);
-      GLOBAL.cleared = false;
+      CONTENT.forEach(item => localStorage.removeItem(STORAGE_KEY_PREFIX + item.id));
       GLOBAL.sessionFound = 0;
       $statFound.textContent = '0';
       buildGrid();
